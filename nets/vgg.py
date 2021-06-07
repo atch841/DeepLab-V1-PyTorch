@@ -71,9 +71,10 @@ class VGG16_LargeFOV(nn.Module):
             self._initialize_weights()
     
     def forward(self, x):
+        if x.size()[1] == 1:
+            x = x.repeat(1,3,1,1)
         output = self.features(x)
-        if self.split == 'test':
-            output = nn.functional.interpolate(output, size=(self.input_size, self.input_size), mode='bilinear', align_corners=True)
+        output = nn.functional.interpolate(output, size=(self.input_size, self.input_size), mode='bilinear', align_corners=True)
         return output
     
     def _initialize_weights(self):

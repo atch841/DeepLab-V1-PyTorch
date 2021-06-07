@@ -1,6 +1,8 @@
+from inference import inference
 import torch
 import torch.nn as nn
 import torch.utils.data
+from torchvision import transforms
 import numpy as np
 from PIL import Image
 import time
@@ -8,23 +10,24 @@ from time import strftime, localtime
 import cv2
 import argparse
 
-from datasets import VOCDataset
+from datasets import LiTS_dataset, RandomGenerator, VOCDataset
 from nets import vgg
 from utils import crf, losses
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device_ids = [0]
 
-batch_size = 30 # 30 for "step", 10 for 'poly'
+batch_size = 40 # 30 for "step", 10 for 'poly'
 lr = 1e-3
 weight_decay = 5e-4
-num_max_iters = 20000 # 6000 for "step", 20000 for 'poly'
+# num_max_iters = 20000 # 6000 for "step", 20000 for 'poly'
+num_max_epoch = 200
 num_update_iters = 10 # 4000 for "step", 10 for 'poly'
 num_save_iters = 1000
-num_print_iters = 100
+num_print_iters = 10
 init_model_path = './data/deeplab_largeFOV.pth'
-log_path = './exp/log.txt'
-model_path_save = './exp/model_last_'
+# log_path = './exp/log.txt'
+# model_path_save = './exp/model_last_'
 root_dir_path = './VOCdevkit/VOC2012'
 pred_dir_path = './exp/labels/'
 
@@ -53,8 +56,19 @@ def get_params(model, key):
                     yield m[1].bias
 
 def train():
-    model = vgg.VGG16_LargeFOV()
-    model.load_state_dict(torch.load(init_model_path))
+    model = vgg.VGG16_LargeFOV(num_classes=2, input_size=256)
+    model_dict = model.state_dict()
+    state_dict = torch.load(init_model_path)
+    new_state_dict = {}
+    for k in state_dict.keys():
+        if not k in model_dict.keys():
+            print('key not found', k)
+        elif model_dict[k].shape != state_dict[k].shape:
+            print('size mismatch',k, model_dict[k].shape, state_dict[k].shape)
+        else:
+            new_state_dict[k] = state_dict[k]
+    r = model.load_state_dict(new_state_dict, strict=False)
+    print(r)
     model = torch.nn.DataParallel(model, device_ids=device_ids)
     model = model.to(device)
     optimizer = torch.optim.SGD(
@@ -85,14 +99,29 @@ def train():
     # optimizer = torch.optim.SGD(params=model.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay) # for val mIoU = 69.6
 
     print('Set data...')
+    if args.dataset == '1p':
+        dataset = LiTS_dataset('/home/viplab/data/train5_1p_half/', split='train',
+                            transform=transforms.Compose([RandomGenerator(output_size=[256, 256])]), 
+                            tumor_only=True)
+    elif args.dataset == '100p':
+        dataset = LiTS_dataset('/home/viplab/data/train5/', split='train',
+                            transform=transforms.Compose([RandomGenerator(output_size=[256, 256])]), 
+                            tumor_only=True)
+    else:
+        dataset = LiTS_dataset('/home/viplab/data/train5/', split='train',
+                            transform=transforms.Compose([RandomGenerator(output_size=[256, 256])]), 
+                            tumor_only=True, pseudo=True)
     train_loader = torch.utils.data.DataLoader(
-        VOCDataset(split='train_aug', crop_size=321, is_scale=False, is_flip=True),
+        dataset,
+        # VOCDataset(split='train_aug', crop_size=321, is_scale=False, is_flip=True),
         # VOCDataset(split='train_aug', crop_size=321, is_scale=True, is_flip=True), # for val mIoU = 69.6
         batch_size=batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=8,
         drop_last=True
     )
+
+    num_max_iters = len(train_loader) * num_max_epoch
 
     # Learning rate policy
     for group in optimizer.param_groups:
@@ -100,9 +129,11 @@ def train():
 
     print('Start train...')
     iters = 0
+    log_path = './exp/log_{}.txt'.format(args.name)
+    model_path_save = './exp/model_{}_last_'.format(args.name)
     log_file = open(log_path, 'w')
     loss_iters, accuracy_iters = [], []
-    for epoch in range(1, 100):
+    for epoch in range(1, 200):
         for iter_id, batch in enumerate(train_loader):
             loss_seg, accuracy = losses.build_metrics(model, batch, device)
             optimizer.zero_grad()
@@ -115,7 +146,7 @@ def train():
             iters += 1
             if iters % num_print_iters == 0:
                 cur_time = strftime("%Y-%m-%d %H:%M:%S", localtime())
-                log_str = 'iters:{:4}, loss:{:6,.4f}, accuracy:{:5,.4}'.format(iters, np.mean(loss_iters), np.mean(accuracy_iters))
+                log_str = 'epoch: {}/{} iters:{:4}/{:4}, loss:{:6,.4f}, accuracy:{:5,.4}'.format(epoch, num_max_epoch, iters, num_max_iters, np.mean(loss_iters), np.mean(accuracy_iters))
                 print(log_str)
                 log_file.write(cur_time + ' ' + log_str + '\n')
                 log_file.flush()
@@ -134,8 +165,11 @@ def train():
             for group in optimizer.param_groups:
                 group["lr"] = group['initial_lr'] * (1 - float(iters) / num_max_iters) ** 0.9
 
-            if iters == num_max_iters:
-                exit()
+            # if iters == num_max_iters:
+            #     exit()
+        
+        if epoch % 5 == 0:
+            inference(2, log_file, model, epoch)
 
 
 def test(model_path_test, use_crf):
@@ -246,9 +280,11 @@ def test(model_path_test, use_crf):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--type', default='test', help='train or test model')
+    parser.add_argument('--name', required=True, type=str, help='log file name')
+    parser.add_argument('--type', default='train', help='train or test model')
     parser.add_argument('--model_path_test', default='./exp/model_last_20000.pth', help='test model path')
     parser.add_argument('--use_crf', default=False, action='store_true', help='use crf or not')
+    parser.add_argument('--dataset', default='pseudo', type=str, help='dataset')
     args = parser.parse_args()
 
     if args.type == 'train':
