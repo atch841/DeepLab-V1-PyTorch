@@ -123,7 +123,7 @@ class LiTS_dataset(Dataset):
                 seg_path = self.data_dir + 'pseudo/' +  self.sample_list_seg[idx]
             else:
                 seg_path = self.data_dir + 'seg/' +  self.sample_list_seg[idx]
-            assert seg_path.replace('seg', 'ct') == image_path, (image_path, seg_path)
+            assert seg_path[seg_path.rfind('/') + 1:].replace('seg', 'ct') == image_path[image_path.rfind('/') + 1:], (image_path, seg_path)
             image = np.load(image_path)
             label = np.load(seg_path)
         else:
