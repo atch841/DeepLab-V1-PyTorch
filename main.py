@@ -17,7 +17,7 @@ from utils import crf, losses
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device_ids = [0]
 
-batch_size = 40 # 30 for "step", 10 for 'poly'
+batch_size = 70 # 30 for "step", 10 for 'poly'
 lr = 1e-3
 weight_decay = 5e-4
 # num_max_iters = 20000 # 6000 for "step", 20000 for 'poly'
