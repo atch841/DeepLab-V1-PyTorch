@@ -60,13 +60,14 @@ def train():
     model_dict = model.state_dict()
     state_dict = torch.load(args.init_model_path)
     new_state_dict = {}
-    for k in state_dict.keys():
+    for kk in state_dict.keys():
+        k = kk.replace('module.', '')
         if not k in model_dict.keys():
             print('key not found', k)
-        elif model_dict[k].shape != state_dict[k].shape:
-            print('size mismatch',k, model_dict[k].shape, state_dict[k].shape)
+        elif model_dict[k].shape != state_dict[kk].shape:
+            print('size mismatch',k, model_dict[k].shape, state_dict[kk].shape)
         else:
-            new_state_dict[k] = state_dict[k]
+            new_state_dict[k] = state_dict[kk]
     r = model.load_state_dict(new_state_dict, strict=False)
     print(r)
     model = torch.nn.DataParallel(model, device_ids=device_ids)
