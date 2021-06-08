@@ -25,7 +25,7 @@ num_max_epoch = 200
 num_update_iters = 10 # 4000 for "step", 10 for 'poly'
 num_save_iters = 1000
 num_print_iters = 10
-init_model_path = './data/deeplab_largeFOV.pth'
+# init_model_path = './data/deeplab_largeFOV.pth'
 # log_path = './exp/log.txt'
 # model_path_save = './exp/model_last_'
 root_dir_path = './VOCdevkit/VOC2012'
@@ -58,7 +58,7 @@ def get_params(model, key):
 def train():
     model = vgg.VGG16_LargeFOV(num_classes=2, input_size=256)
     model_dict = model.state_dict()
-    state_dict = torch.load(init_model_path)
+    state_dict = torch.load(args.init_model_path)
     new_state_dict = {}
     for k in state_dict.keys():
         if not k in model_dict.keys():
@@ -154,7 +154,7 @@ def train():
                 accuracy_iters = []
             
             if iters % num_save_iters == 0:
-                torch.save(model.state_dict(), model_path_save + str(iters) + '.pth')
+                torch.save(model.state_dict(), model_path_save + str(iters) + '_{}.pth'.format(epoch))
             
             # step
             # if iters == num_update_iters or iters == num_update_iters + 1000:
@@ -170,6 +170,7 @@ def train():
         
         if epoch % 5 == 0:
             inference(2, log_file, model, epoch)
+            torch.save(model.state_dict(), model_path_save + str(iters) + '_{}.pth'.format(epoch))
 
 
 def test(model_path_test, use_crf):
@@ -285,6 +286,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_path_test', default='./exp/model_last_20000.pth', help='test model path')
     parser.add_argument('--use_crf', default=False, action='store_true', help='use crf or not')
     parser.add_argument('--dataset', default='pseudo', type=str, help='dataset')
+    parser.add_argument('--init_model_path', default='./data/deeplab_largeFOV.pth', type=str, help='load pretrain')
     args = parser.parse_args()
 
     if args.type == 'train':

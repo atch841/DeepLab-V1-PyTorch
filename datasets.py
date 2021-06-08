@@ -102,9 +102,10 @@ class LiTS_dataset(Dataset):
     def __init__(self, base_dir, split, transform=None, tumor_only=False, pseudo=False):
         self.transform = transform  # using transform in torch!
         self.split = split
+        self.pseudo = pseudo
         self.sample_list_ct = os.listdir(base_dir + 'ct/')
         if pseudo:
-            self.sample_list_seg = os.listdir('/home/viplab/nas/train5/' + 'pseudo/')
+            self.sample_list_seg = os.listdir(base_dir + 'pseudo/')
         else:
             self.sample_list_seg = os.listdir(base_dir + 'seg/')
         self.sample_list_ct.sort()
@@ -118,10 +119,13 @@ class LiTS_dataset(Dataset):
     def __getitem__(self, idx):
         if self.split == "train":
             image_path = self.data_dir + 'ct/' +  self.sample_list_ct[idx]
-            seg_path = self.data_dir + 'seg/' +  self.sample_list_seg[idx]
+            if self.pseudo:
+                seg_path = self.data_dir + 'pseudo/' +  self.sample_list_seg[idx]
+            else:
+                seg_path = self.data_dir + 'seg/' +  self.sample_list_seg[idx]
             assert seg_path.replace('seg', 'ct') == image_path, (image_path, seg_path)
-            image = np.load(self.data_dir + 'ct/' +  self.sample_list_ct[idx])
-            label = np.load(self.data_dir + 'seg/' +  self.sample_list_seg[idx])
+            image = np.load(image_path)
+            label = np.load(seg_path)
         else:
             ct = sitk.ReadImage(self.data_dir + 'ct/' + self.sample_list_ct[idx], sitk.sitkInt16)
             seg = sitk.ReadImage(self.data_dir + 'seg/' + self.sample_list_seg[idx], sitk.sitkUInt8)
@@ -134,7 +138,7 @@ class LiTS_dataset(Dataset):
             image = ndimage.zoom(image, (1, 0.5, 0.5), order=3)
             label = ndimage.zoom(label, (1, 0.5, 0.5), order=0)
 
-        if self.tumor_only:
+        if not self.pseudo and self.tumor_only:
             label = (label == 2).astype('float32')
 
         sample = {'image': image, 'label': label}
