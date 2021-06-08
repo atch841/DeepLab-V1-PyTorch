@@ -17,11 +17,11 @@ from utils import crf, losses
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device_ids = [0]
 
-batch_size = 70 # 30 for "step", 10 for 'poly'
-lr = 1e-3
+# batch_size = 70 # 30 for "step", 10 for 'poly'
+# lr = 1e-3
 weight_decay = 5e-4
 # num_max_iters = 20000 # 6000 for "step", 20000 for 'poly'
-num_max_epoch = 200
+# num_max_epoch = 200
 num_update_iters = 10 # 4000 for "step", 10 for 'poly'
 num_save_iters = 1000
 num_print_iters = 10
@@ -75,22 +75,22 @@ def train():
         params = [
             {
                 'params': get_params(model, '1x'),
-                'lr': lr,
+                'lr': args.lr,
                 'weight_decay': weight_decay
             },
             {
                 'params': get_params(model, '2x'),
-                'lr': lr * 2,
+                'lr': args.lr * 2,
                 'weight_decay': 0
             },
             {
                 'params': get_params(model, '10x'),
-                'lr': lr * 10,
+                'lr': args.lr * 10,
                 'weight_decay': weight_decay
             },
             {
                 'params': get_params(model, '20x'),
-                'lr': lr * 20,
+                'lr': args.lr * 20,
                 'weight_decay': 0
             },
         ],
@@ -115,13 +115,13 @@ def train():
         dataset,
         # VOCDataset(split='train_aug', crop_size=321, is_scale=False, is_flip=True),
         # VOCDataset(split='train_aug', crop_size=321, is_scale=True, is_flip=True), # for val mIoU = 69.6
-        batch_size=batch_size,
+        batch_size=args.batch_size,
         shuffle=True,
         num_workers=8,
         drop_last=True
     )
 
-    num_max_iters = len(train_loader) * num_max_epoch
+    num_max_iters = len(train_loader) * args.num_max_epoch
 
     # Learning rate policy
     for group in optimizer.param_groups:
@@ -146,7 +146,7 @@ def train():
             iters += 1
             if iters % num_print_iters == 0:
                 cur_time = strftime("%Y-%m-%d %H:%M:%S", localtime())
-                log_str = 'epoch: {}/{} iters:{:4}/{:4}, loss:{:6,.4f}, accuracy:{:5,.4}'.format(epoch, num_max_epoch, iters, num_max_iters, np.mean(loss_iters), np.mean(accuracy_iters))
+                log_str = 'epoch: {}/{} iters:{:4}/{:4}, loss:{:6,.4f}, accuracy:{:5,.4}'.format(epoch, args.num_max_epoch, iters, num_max_iters, np.mean(loss_iters), np.mean(accuracy_iters))
                 print(log_str)
                 log_file.write(cur_time + ' ' + log_str + '\n')
                 log_file.flush()
@@ -287,6 +287,9 @@ if __name__ == "__main__":
     parser.add_argument('--use_crf', default=False, action='store_true', help='use crf or not')
     parser.add_argument('--dataset', default='pseudo', type=str, help='dataset')
     parser.add_argument('--init_model_path', default='./data/deeplab_largeFOV.pth', type=str, help='load pretrain')
+    parser.add_argument('--batch_size', type=int, default=70)
+    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--num_max_epoch', type=int, default=200)
     args = parser.parse_args()
 
     if args.type == 'train':
