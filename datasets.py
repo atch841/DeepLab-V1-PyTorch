@@ -103,10 +103,11 @@ class LiTS_dataset(Dataset):
         self.transform = transform  # using transform in torch!
         self.split = split
         self.pseudo = pseudo
-        self.sample_list_ct = os.listdir(base_dir + 'ct/')
         if pseudo:
-            self.sample_list_seg = os.listdir(base_dir + 'pseudo/')
+            self.sample_list_seg = os.listdir(base_dir + 'pseudo2/')
+            self.sample_list_ct = [f.replace('seg', 'ct') for f in self.sample_list_seg]
         else:
+            self.sample_list_ct = os.listdir(base_dir + 'ct/')
             self.sample_list_seg = os.listdir(base_dir + 'seg/')
         self.sample_list_ct.sort()
         self.sample_list_seg.sort()
