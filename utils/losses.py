@@ -20,7 +20,7 @@ def resize_labels(labels, size):
     return new_labels
 
 def build_metrics(model, batch, device):
-    CEL = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 389.0]), ignore_index=255).to(device)
+    CEL = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 287.4423]), ignore_index=255).to(device)
 
     images, labels = batch['image'], batch['label']
     # labels = resize_labels(labels, size=(41, 41)).to(device)

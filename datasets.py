@@ -121,7 +121,7 @@ class LiTS_dataset(Dataset):
         if self.split == "train":
             image_path = self.data_dir + 'ct/' +  self.sample_list_ct[idx]
             if self.pseudo:
-                seg_path = self.data_dir + 'pseudo/' +  self.sample_list_seg[idx]
+                seg_path = self.data_dir + 'pseudo2/' +  self.sample_list_seg[idx]
             else:
                 seg_path = self.data_dir + 'seg/' +  self.sample_list_seg[idx]
             assert seg_path[seg_path.rfind('/') + 1:].replace('seg', 'ct') == image_path[image_path.rfind('/') + 1:], (image_path, seg_path)
@@ -141,6 +141,58 @@ class LiTS_dataset(Dataset):
 
         if not self.pseudo and self.tumor_only:
             label = (label == 2).astype('float32')
+
+        sample = {'image': image, 'label': label}
+        if self.transform:
+            sample = self.transform(sample)
+        sample['case_name'] = self.sample_list_ct[idx][:-4]
+        return sample
+
+
+class KiTS_dataset(Dataset):
+    def __init__(self, base_dir, split, transform=None, tumor_only=False, pseudo=False):
+        self.transform = transform  # using transform in torch!
+        self.split = split
+        self.pseudo = pseudo
+        if pseudo:
+            self.sample_list_seg = os.listdir(base_dir + 'pseudo2/')
+            self.sample_list_ct = [f.replace('seg', 'ct') for f in self.sample_list_seg]
+        else:
+            self.sample_list_ct = os.listdir(base_dir + 'ct/')
+            self.sample_list_seg = os.listdir(base_dir + 'seg/')
+        self.sample_list_ct.sort()
+        self.sample_list_seg.sort()
+        self.data_dir = base_dir
+        self.tumor_only = tumor_only
+
+    def __len__(self):
+        return len(self.sample_list_ct)
+
+    def __getitem__(self, idx):
+        if self.split == "train":
+            image_path = self.data_dir + 'ct/' +  self.sample_list_ct[idx]
+            if self.pseudo:
+                seg_path = self.data_dir + 'pseudo2/' +  self.sample_list_seg[idx]
+            else:
+                seg_path = self.data_dir + 'seg/' +  self.sample_list_seg[idx]
+            assert seg_path[seg_path.rfind('/') + 1:].replace('seg', 'ct') == image_path[image_path.rfind('/') + 1:], (image_path, seg_path)
+            image = np.load(image_path)
+            label = np.load(seg_path)
+        else:
+            ct = sitk.ReadImage(self.data_dir + 'ct/' + self.sample_list_ct[idx], sitk.sitkInt16)
+            seg = sitk.ReadImage(self.data_dir + 'seg/' + self.sample_list_seg[idx], sitk.sitkUInt8)
+            image = sitk.GetArrayFromImage(ct)
+            label = sitk.GetArrayFromImage(seg)
+
+            image = image.astype(np.float32) - 50
+            image = image / 250
+
+            image = ndimage.zoom(image, (1, 0.5, 0.5), order=3)
+            label = ndimage.zoom(label, (1, 0.5, 0.5), order=0)
+
+        if not self.pseudo and self.tumor_only:
+            label = (label == 2).astype('float32')
+
 
         sample = {'image': image, 'label': label}
         if self.transform:

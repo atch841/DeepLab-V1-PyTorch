@@ -43,6 +43,7 @@ def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_s
                 if type(outputs) == tuple: # for deeplab_resnest
                     outputs = outputs[0]
                 out = torch.argmax(torch.softmax(outputs, dim=1), dim=1).squeeze(0)
+                # out = (torch.softmax(outputs, dim=1)[:, 1] > 0.8).squeeze(0).float()
                 out = out.cpu().detach().numpy()
                 if x != patch_size[0] or y != patch_size[1]:
                     pred = zoom(out, (x / patch_size[0], y / patch_size[1]), order=0)
@@ -60,6 +61,7 @@ def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_s
         metric_list.append(calculate_metric_percase(prediction == i, label == i))
 
     if test_save_path is not None:
+        print('saving...')
         img_itk = sitk.GetImageFromArray(image.astype(np.float32))
         prd_itk = sitk.GetImageFromArray(prediction.astype(np.float32))
         lab_itk = sitk.GetImageFromArray(label.astype(np.float32))
@@ -73,7 +75,7 @@ def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_s
 
 def inference(num_classes, log_file, model, epoch, test_save_path=None):
     # db_test = args.Dataset(base_dir=args.volume_path, split="test_vol", list_dir=args.list_dir)
-    db_test = db_test = LiTS_dataset('/home/viplab/data/stage1/test/', split='test_vol', tumor_only=True)
+    db_test = db_test = LiTS_dataset('/home/viplab/data/kits_vols1/test/', split='test_vol', tumor_only=True)
     testloader = DataLoader(db_test, batch_size=1, shuffle=False, num_workers=1)
     log(log_file, "{} test iterations per epoch".format(len(testloader)))
     model.eval()

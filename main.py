@@ -10,7 +10,7 @@ from time import strftime, localtime
 import cv2
 import argparse
 
-from datasets import LiTS_dataset, RandomGenerator, VOCDataset
+from datasets import LiTS_dataset, KiTS_dataset, RandomGenerator, VOCDataset
 from nets import vgg
 from utils import crf, losses
 
@@ -126,7 +126,7 @@ def train():
 
     print('Set data...')
     # if args.dataset == '1p':
-    dataset_1p = LiTS_dataset('/home/viplab/data/train5_1p_half/', split='train',
+    dataset_1p = KiTS_dataset('/home/viplab/data/kits_train1_1p_half/', split='train',
                             transform=transforms.Compose([RandomGenerator(output_size=[256, 256])]), 
                             tumor_only=True)
     # elif args.dataset == '100p':
@@ -134,7 +134,7 @@ def train():
     #                         transform=transforms.Compose([RandomGenerator(output_size=[256, 256])]), 
     #                         tumor_only=True)
     # else:
-    dataset = LiTS_dataset('/home/viplab/data/train5/', split='train',
+    dataset = KiTS_dataset('/home/viplab/data/kits_train1/', split='train',
                             transform=transforms.Compose([RandomGenerator(output_size=[256, 256])]), 
                             tumor_only=True, pseudo=True)
     train_loader = torch.utils.data.DataLoader(
@@ -173,11 +173,13 @@ def train():
     log_file = open(log_path, 'w')
     loss_iters, accuracy_iters = [], []
     loss_iters_1p, accuracy_iters_1p = [], []
-    inference(2, log_file, model, -1)
+    # inference(2, log_file, model, -1)
     for epoch in range(1, 400):
+        print('train pseudo')
         iters = train_epoch(train_loader, model, optimizer, loss_iters, accuracy_iters,
                             iters, log_file, num_max_iters, epoch)
         
+        print('train 1p')
         iters_1p = train_epoch(train_loader_1p, model, optimizer_1p, loss_iters_1p, accuracy_iters_1p,
                             iters_1p, log_file, num_max_iters_1p, epoch)
         
@@ -340,7 +342,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=70)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--pseudo_lr', type=float, default=0.01)
-    parser.add_argument('--num_max_epoch', type=int, default=200)
+    parser.add_argument('--num_max_epoch', type=int, default=400)
     args = parser.parse_args()
 
     if args.type == 'train':
