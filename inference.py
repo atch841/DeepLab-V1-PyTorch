@@ -60,6 +60,7 @@ def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_s
         metric_list.append(calculate_metric_percase(prediction == i, label == i))
 
     if test_save_path is not None:
+        print('saving...')
         img_itk = sitk.GetImageFromArray(image.astype(np.float32))
         prd_itk = sitk.GetImageFromArray(prediction.astype(np.float32))
         lab_itk = sitk.GetImageFromArray(label.astype(np.float32))

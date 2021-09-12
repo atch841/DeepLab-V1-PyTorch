@@ -103,8 +103,9 @@ class LiTS_dataset(Dataset):
         self.transform = transform  # using transform in torch!
         self.split = split
         self.pseudo = pseudo
+        self.pseudo_folder = 'pseudo5/'
         if pseudo:
-            self.sample_list_seg = os.listdir(base_dir + 'pseudo2/')
+            self.sample_list_seg = os.listdir(base_dir + self.pseudo_folder)
             self.sample_list_ct = [f.replace('seg', 'ct') for f in self.sample_list_seg]
         else:
             self.sample_list_ct = os.listdir(base_dir + 'ct/')
@@ -121,7 +122,7 @@ class LiTS_dataset(Dataset):
         if self.split == "train":
             image_path = self.data_dir + 'ct/' +  self.sample_list_ct[idx]
             if self.pseudo:
-                seg_path = self.data_dir + 'pseudo/' +  self.sample_list_seg[idx]
+                seg_path = self.data_dir + self.pseudo_folder +  self.sample_list_seg[idx]
             else:
                 seg_path = self.data_dir + 'seg/' +  self.sample_list_seg[idx]
             assert seg_path[seg_path.rfind('/') + 1:].replace('seg', 'ct') == image_path[image_path.rfind('/') + 1:], (image_path, seg_path)

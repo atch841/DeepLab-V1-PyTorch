@@ -173,11 +173,13 @@ def train():
     log_file = open(log_path, 'w')
     loss_iters, accuracy_iters = [], []
     loss_iters_1p, accuracy_iters_1p = [], []
-    inference(2, log_file, model, -1)
+    # inference(2, log_file, model, -1)
     for epoch in range(1, 400):
+        print('train pseudo')
         iters = train_epoch(train_loader, model, optimizer, loss_iters, accuracy_iters,
                             iters, log_file, num_max_iters, epoch)
         
+        print('train 1p')
         iters_1p = train_epoch(train_loader_1p, model, optimizer_1p, loss_iters_1p, accuracy_iters_1p,
                             iters_1p, log_file, num_max_iters_1p, epoch)
         
@@ -340,7 +342,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=70)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--pseudo_lr', type=float, default=0.01)
-    parser.add_argument('--num_max_epoch', type=int, default=200)
+    parser.add_argument('--num_max_epoch', type=int, default=400)
     args = parser.parse_args()
 
     if args.type == 'train':
